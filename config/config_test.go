@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+type tgt map[string]interface{}
+
 func TestParseConfig(t *testing.T) {
 	f, err := os.Open("testdata/config_test.yml")
 	if err != nil {
@@ -21,12 +23,13 @@ func TestParseConfig(t *testing.T) {
 		t.FailNow()
 	}
 
-	targets := []string{
-		"8.8.8.8",
-		"8.8.4.4",
-		"2001:4860:4860::8888",
-		"2001:4860:4860::8844",
-	}
+        targets := make([]map[string]interface{})
+        dict := tgt{
+          "name": "8.8.8.8",
+          "alias": "google",
+        }
+
+        targets[0] = dict
 
 	if !reflect.DeepEqual(targets, c.Targets) {
 		t.Errorf("expected 4 targets (%v) but got %d (%v)", targets, len(c.Targets), c.Targets)

@@ -19,12 +19,13 @@ Targets can be specified in a YAML based config file:
 
 ```yaml
 targets:
-  - 8.8.8.8
-  - 8.8.4.4
-  - 2001:4860:4860::8888
-  - 2001:4860:4860::8844
-  - google.com
-  
+  - host: 8.8.8.8
+    alias: google
+  - host: 192.168.56.102
+    alias: internal
+  - host: 192.168.56.1
+    alias: internal
+ 
 dns:
   refresh: 2m15s
   nameserver: 1.1.1.1

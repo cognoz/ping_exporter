@@ -10,10 +10,14 @@ import (
 	mon "github.com/digineo/go-ping/monitor"
 	"github.com/prometheus/common/log"
 )
+type dest struct {
+	host      string
+        addresses []net.IPAddr
+        alias     string
+}
 
 type target struct {
-	host      string
-	addresses []net.IPAddr
+        dest      dest
 	delay     time.Duration
 	resolver  *net.Resolver
 	mutex     sync.Mutex
@@ -23,7 +27,7 @@ func (t *target) addOrUpdateMonitor(monitor *mon.Monitor) error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	addrs, err := t.resolver.LookupIPAddr(context.Background(), t.host)
+	addrs, err := t.resolver.LookupIPAddr(context.Background(), t.dest.host)
 	if err != nil {
 		return fmt.Errorf("error resolving target: %v", err)
 	}
@@ -36,23 +40,23 @@ func (t *target) addOrUpdateMonitor(monitor *mon.Monitor) error {
 	}
 
 	t.cleanUp(addrs, monitor)
-	t.addresses = addrs
+	t.dest.addresses = addrs
 
 	return nil
 }
 
 func (t *target) addIfNew(addr net.IPAddr, monitor *mon.Monitor) error {
-	if isIPAddrInSlice(addr, t.addresses) {
+	if isIPAddrInSlice(addr, t.dest.addresses) {
 		return nil
 	}
 	return t.add(addr, monitor)
 }
 
 func (t *target) cleanUp(new []net.IPAddr, monitor *mon.Monitor) {
-	for _, o := range t.addresses {
+	for _, o := range t.dest.addresses {
 		if !isIPAddrInSlice(o, new) {
 			name := t.nameForIP(o)
-			log.Infof("removing target for host %s (%v)", t.host, o)
+			log.Infof("removing target for host %s (%v)", t.dest.host, o)
 			monitor.RemoveTarget(name)
 		}
 	}
@@ -60,7 +64,7 @@ func (t *target) cleanUp(new []net.IPAddr, monitor *mon.Monitor) {
 
 func (t *target) add(addr net.IPAddr, monitor *mon.Monitor) error {
 	name := t.nameForIP(addr)
-	log.Infof("adding target for host %s (%v)", t.host, addr)
+	log.Infof("adding target for host %s (%v)", t.dest.host, addr)
 	return monitor.AddTargetDelayed(name, addr, t.delay)
 }
 
@@ -69,7 +73,7 @@ func (t *target) nameForIP(addr net.IPAddr) string {
 	if addr.IP.To4() == nil {
 		v = 6
 	}
-	return fmt.Sprintf("%s %s %d", t.host, addr.IP, v)
+	return fmt.Sprintf("%s %s %s %d", t.dest.host, t.dest.alias, addr.IP, v)
 }
 
 func isIPAddrInSlice(ipa net.IPAddr, slice []net.IPAddr) bool {

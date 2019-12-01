@@ -11,7 +11,7 @@ import (
 const prefix = "ping_"
 
 var (
-	labelNames = []string{"target", "ip", "ip_version"}
+	labelNames = []string{"target", "alias", "ip", "ip_version"}
 	rttDesc    = prometheus.NewDesc(prefix+"rtt_ms", "Round trip time in millis (deprecated)", append(labelNames, "type"), nil)
 	bestDesc   = prometheus.NewDesc(prefix+"rtt_best_ms", "Best round trip time in millis", labelNames, nil)
 	worstDesc  = prometheus.NewDesc(prefix+"rtt_worst_ms", "Worst round trip time in millis", labelNames, nil)
@@ -48,10 +48,8 @@ func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	ch <- prometheus.MustNewConstMetric(progDesc, prometheus.GaugeValue, 1)
-
 	for target, metrics := range p.metrics {
-		l := strings.SplitN(target, " ", 3)
-
+		l := strings.SplitN(target, " ", 4)
 		if metrics.PacketsSent > metrics.PacketsLost {
 			if enableDeprecatedMetrics {
 				ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.Best), append(l, "best")...)

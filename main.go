@@ -19,7 +19,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-const version string = "0.4.4"
+const version string = "0.4.5"
 
 var (
 	showVersion   = kingpin.Flag("version", "Print version information").Default().Bool()
@@ -33,7 +33,8 @@ var (
 	dnsRefresh    = kingpin.Flag("dns.refresh", "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)").Default("1m").Duration()
 	dnsNameServer = kingpin.Flag("dns.nameserver", "DNS server used to resolve hostname of targets").Default("").String()
 	logLevel      = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
-	targets       = kingpin.Arg("targets", "A list of targets to ping").Strings()
+	alias         = kingpin.Arg("alias", "Alias").Strings()
+//	targets       = kingpin.Arg("targets", "A list of targets to ping").Strings()
 )
 
 var (
@@ -88,10 +89,6 @@ func main() {
 		kingpin.FatalUsage("ping.size must be between 0 and 65500")
 	}
 
-	if len(cfg.Targets) == 0 {
-		kingpin.FatalUsage("No targets specified")
-	}
-
 	m, err := startMonitor(cfg)
 	if err != nil {
 		log.Errorln(err)
@@ -135,22 +132,23 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 		cfg.Ping.Timeout.Duration())
 	monitor.HistorySize = cfg.Ping.History
 
-	targets := make([]*target, len(cfg.Targets))
-	for i, host := range cfg.Targets {
+	targets := make([]*target, len(cfg.Dest))
+	for i, host := range cfg.Dest {
 		t := &target{
-			host:      host,
-			addresses: make([]net.IPAddr, 0),
+                        dest:      dest{
+                          host:      host.Host,
+                          alias:     host.Alias,
+                          addresses: make([]net.IPAddr, 0),                          
+                        },
 			delay:     time.Duration(10*i) * time.Millisecond,
 			resolver:  resolver,
 		}
 		targets[i] = t
-
 		err := t.addOrUpdateMonitor(monitor)
 		if err != nil {
 			log.Errorln(err)
 		}
 	}
-
 	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), targets, monitor)
 
 	return monitor, nil
@@ -233,9 +231,9 @@ func setupResolver(cfg *config.Config) *net.Resolver {
 // addFlagToConfig updates cfg with command line flag values, unless the
 // config has non-zero values.
 func addFlagToConfig(cfg *config.Config) {
-	if len(cfg.Targets) == 0 {
-		cfg.Targets = *targets
-	}
+//	if len(cfg.Dest) == 0 {
+//		cfg.Dest = *targets
+//	}
 	if cfg.Ping.History == 0 {
 		cfg.Ping.History = *historySize
 	}
